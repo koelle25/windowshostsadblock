@@ -3,7 +3,7 @@ if ($PSVersionTable.PSVersion.Major -ge 3) {
 	
 	# Self elevating PowerShell script
 	if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit }
-	cd "C:\Users\Kevin\Desktop\Dokumente\hostsadblock" # CHANGE THIS ACCORDINGLY !!!
+	cd "C:\Users\Kevin\Desktop\Dokumente\windowshostsadblock" # CHANGE THIS ACCORDINGLY !!!
 
 	# Paths
 	$RemoteHostsURL = "http://someonewhocares.org/hosts/ipv6/hosts"
@@ -15,14 +15,14 @@ if ($PSVersionTable.PSVersion.Major -ge 3) {
 	# Get Last-Modified
 	$WebResponse = Invoke-WebRequest $RemoteHostsURL -Method Head
 	$RemoteLastModified = $WebResponse.Headers["Last-Modified"]
-	$LocalLastModified = Get-Content -Path $LocalLatestAdblock
-
-	# Convert to DateTime-Objects for comparing
 	$RemoteDate = [DateTime] $RemoteLastModified
-	$LocalDate = [DateTime] $LocalLastModified
+	if (Test-Path $LocalLatestAdblock) {
+		$LocalLastModified = Get-Content -Path $LocalLatestAdblock
+		$LocalDate = [DateTime] $LocalLastModified
+	}
 
-	# Compare and only proceed if remote is newer
-	if ($RemoteDate.CompareTo($LocalDate) -gt 0) {
+	# Compare and only download if remote is newer
+	if ($LocalLastModified -eq $Null -or $RemoteDate.CompareTo($LocalDate) -gt 0) {
 		# Remote is newer
 		Write-Host "Remote Hosts-File is newer, getting it ..."
 		
@@ -36,25 +36,25 @@ if ($PSVersionTable.PSVersion.Major -ge 3) {
 		$Stream = [System.IO.StreamWriter] $AdblockHosts
 		$Stream.Write("$WebResponseFull")
 		$Stream.Close()
-		
-		# Build new Hosts-File
-		Write-Host "Building new Hosts-File ..."
-		$HostsFiles = Get-ChildItem $PSScriptRoot\*.hosts -Name
-		$Stream = [System.IO.StreamWriter] "$TempHostsFile"
-		foreach ($File in $HostsFiles) {
-			$Contents = Get-Content -Path $File -Raw
-			$Stream.WriteLine("$Contents")
-		}
-		$Stream.Close()
-		
-		# Activate new Hosts-File in System
-		Write-Host "Activating new Hosts-File in the System ..."
-		Copy-Item -Path $TempHostsFile -Destination $RealHostsFile -Force
-		
-		Write-Host "Done!"
 	} else {
-		Write-Host "You have the newest Hosts-File."
+		Write-Host "You have the newest Hosts-File. Just refreshing it locally."
 	}
+	
+	# Build new Hosts-File
+	Write-Host "Building new Hosts-File ..."
+	$HostsFiles = Get-ChildItem $PSScriptRoot\*.hosts -Name
+	$Stream = [System.IO.StreamWriter] "$TempHostsFile"
+	foreach ($File in $HostsFiles) {
+		$Contents = Get-Content -Path $File -Raw
+		$Stream.WriteLine("$Contents")
+	}
+	$Stream.Close()
+	
+	# Activate new Hosts-File in System
+	Write-Host "Activating new Hosts-File in the System ..."
+	Copy-Item -Path $TempHostsFile -Destination $RealHostsFile -Force
+	
+	Write-Host "Done!"
 } else {
 	Write-Host "Sorry, your PowerShell-Version is too old - consider upgrading"
 }
