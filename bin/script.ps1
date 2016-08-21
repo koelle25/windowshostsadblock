@@ -55,6 +55,7 @@ if ($PSVersionTable.PSVersion.Major -ge 3) {
 	Copy-Item -Path $TempHostsFile -Destination $RealHostsFile -Force
 	
 	Write-Host "Done!"
+	Write-Host "You may have to restart your Computer for the changes to apply."
 } else {
 	Write-Host "Sorry, your PowerShell-Version is too old - consider upgrading"
 }
